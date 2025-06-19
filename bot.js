@@ -131,24 +131,32 @@ bot.on('message', (msg) => {
       guiaSeleccionada = buscarEnGuias(guias, userMessage);
     }
   
-    if (guiaSeleccionada) {
-      let respuesta = guiaSeleccionada.descripcion;
-      if (guiaSeleccionada.pdf) {
-        // Escapar caracteres especiales en la URL (como ')' o '_')
-        const escapedUrl = guiaSeleccionada.pdf.replace(/\)/g, '%29');
-        respuesta += `\n\n[Consulta el PDF](${escapedUrl})`;
-      }
+if (guiaSeleccionada) {
+  let respuesta = guiaSeleccionada.descripcion;
 
-      bot.sendMessage(chatId, respuesta, {
-        parse_mode: 'MarkdownV2',
-        disable_web_page_preview: true
-      });
-  
-      mostrarOpcionesContinuar(chatId);
-      delete userState[chatId];
-    } else {
-      bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
-    }
+  if (guiaSeleccionada.pdf) {
+    // Opción 1: Enviar el mensaje con un botón (recomendado)
+    const teclado = {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔍 Ver PDF', url: guiaSeleccionada.pdf }]
+        ]
+      }
+    };
+    // Enviamos primero la descripción
+    bot.sendMessage(chatId, respuesta, { disable_web_page_preview: true });
+    // Luego el botón para el PDF
+    bot.sendMessage(chatId, 'Haz clic en el botón para abrir el PDF:', teclado);
+  } else {
+    // Si no hay PDF, solo enviamos la descripción
+    bot.sendMessage(chatId, respuesta, { disable_web_page_preview: true });
+  }
+
+  mostrarOpcionesContinuar(chatId);
+  delete userState[chatId];
+} else {
+  bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
+}
   
     return;
   }
