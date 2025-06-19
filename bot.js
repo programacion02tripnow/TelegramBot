@@ -104,52 +104,72 @@ bot.on('message', (msg) => {
   // Obtener estado del usuario
   const estado = userState[chatId];
 
-  // Si el usuario está en un estado de selección de categoría
-  if (estado && estado.seleccion && categorias[estado.seleccion]) {
-    const categoriaSeleccionada = estado.seleccion;
-    const categoria = categorias[categoriaSeleccionada];
+function escapeMarkdownV2(text) {
+  return text.replace(/([_\*\[\]\(\)~`>#+\-=|{}\.!])/g, '\\$1');
+}
+console.log('Entrando a la lógica de guías', { estado, userMessage });
+if (estado && estado.seleccion && categorias[estado.seleccion]) {
+  const categoriaSeleccionada = estado.seleccion;
+  console.log(`Entramos al bloque principal con categoría: ${categoriaSeleccionada}`);
 
-    if (!categoria.guias) {
-      bot.sendMessage(chatId, 'No se encontraron guías para esta categoría.');
-      return;
-    }
-    
-    const guias = categoria.guias;
-    let guiaSeleccionada = null;
-  
-    // Buscar por número
-    if (/^\d+$/.test(userMessage)) {
-      const opcionIndex = parseInt(userMessage) - 1;
-      const opciones = Object.keys(guias);
-      if (opcionIndex >= 0 && opcionIndex < opciones.length) {
-        guiaSeleccionada = guias[opciones[opcionIndex]];
-      }
-    }
-  
-    // Buscar por texto
-    if (!guiaSeleccionada) {
-      guiaSeleccionada = buscarEnGuias(guias, userMessage);
-    }
-  
-    if (guiaSeleccionada) {
-      let respuesta = guiaSeleccionada.descripcion;
-      if (guiaSeleccionada.pdf) {
-        respuesta += `\n\nConsulta el PDF: ${guiaSeleccionada.pdf}`;
-      }
-  
-      bot.sendMessage(chatId, respuesta, {
-        parse_mode: 'Markdown',
-        disable_web_page_preview: true
-      });
-  
-      mostrarOpcionesContinuar(chatId);
-      delete userState[chatId];
-    } else {
-      bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
-    }
-  
+  const categoria = categorias[categoriaSeleccionada];
+
+  if (!categoria.guias) {
+    console.log('No se encontraron guías para esta categoría.');
+    bot.sendMessage(chatId, 'No se encontraron guías para esta categoría.');
     return;
   }
+  
+  const guias = categoria.guias;
+  let guiaSeleccionada = null;
+
+  // Buscar por número
+  if (/^\d+$/.test(userMessage)) {
+    const opcionIndex = parseInt(userMessage, 10) - 1;
+    const opciones = Object.keys(guias);
+    console.log(`userMessage es número: ${userMessage}`);
+    if (opcionIndex >= 0 && opcionIndex < opciones.length) {
+      guiaSeleccionada = guias[opciones[opcionIndex]];
+      console.log('Guía seleccionada por número:', guiaSeleccionada);
+    } else {
+      console.log('Número fuera de rango para guías');
+    }
+  }
+
+  // Buscar por texto
+  if (!guiaSeleccionada) {
+    guiaSeleccionada = buscarEnGuias(guias, userMessage);
+    console.log('Guía seleccionada por texto:', guiaSeleccionada);
+  }
+
+  if (guiaSeleccionada) {
+    console.log('Guía final seleccionada:', guiaSeleccionada);
+
+    let descripcionEscapada = escapeMarkdownV2(guiaSeleccionada.descripcion);
+    let url = guiaSeleccionada.pdf ? guiaSeleccionada.pdf : null;
+
+    let respuesta = descripcionEscapada;
+    if (url) {
+      // Escapamos paréntesis en url para MarkdownV2 por si acaso
+      url = url.replace(/([\(\)])/g, '\\$1');
+      respuesta += `\n\n[Consulta el PDF](${url})`;
+    }
+
+    bot.sendMessage(chatId, respuesta, {
+      parse_mode: 'MarkdownV2',
+      disable_web_page_preview: true
+    });
+
+    mostrarOpcionesContinuar(chatId);
+    delete userState[chatId];
+  } else {
+    console.log('No se encontró guía para el mensaje:', userMessage);
+    bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
+  }
+
+  return;
+}
+
   
 
   // Si el usuario selecciona una categoría principal
