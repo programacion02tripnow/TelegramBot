@@ -134,11 +134,13 @@ bot.on('message', (msg) => {
     if (guiaSeleccionada) {
       let respuesta = guiaSeleccionada.descripcion;
       if (guiaSeleccionada.pdf) {
-        respuesta += `\n\nConsulta el PDF: ${guiaSeleccionada.pdf}`;
+        // Escapar caracteres especiales en la URL (como ')' o '_')
+        const escapedUrl = guiaSeleccionada.pdf.replace(/\)/g, '%29');
+        respuesta += `\n\n[Consulta el PDF](${escapedUrl})`;
       }
-  
+
       bot.sendMessage(chatId, respuesta, {
-        parse_mode: 'Markdown',
+        parse_mode: 'MarkdownV2',
         disable_web_page_preview: true
       });
   
