@@ -104,6 +104,11 @@ bot.on('message', (msg) => {
   // Obtener estado del usuario
   const estado = userState[chatId];
 
+  function escapeMarkdownV2(text) {
+    return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, match => '\\' + match);
+  }
+
+
   // Si el usuario está en un estado de selección de categoría
   if (estado && estado.seleccion && categorias[estado.seleccion]) {
     const categoriaSeleccionada = estado.seleccion;
@@ -130,34 +135,58 @@ bot.on('message', (msg) => {
     if (!guiaSeleccionada) {
       guiaSeleccionada = buscarEnGuias(guias, userMessage);
     }
-  
-if (guiaSeleccionada) {
-  let respuesta = guiaSeleccionada.descripcion;
+      
+    function escapeMarkdownV2(text) {
+  return text.replace(/([\_\*\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!])/g, '\\$1');
+}
 
-  if (guiaSeleccionada.pdf) {
-    // Opción 1: Enviar el mensaje con un botón (recomendado)
-    const teclado = {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🔍 Ver PDF', url: guiaSeleccionada.pdf }]
-        ]
-      }
-    };
-    // Enviamos primero la descripción
-    bot.sendMessage(chatId, respuesta, { disable_web_page_preview: true });
-    // Luego el botón para el PDF
-    bot.sendMessage(chatId, 'Haz clic en el botón para abrir el PDF:', teclado);
-  } else {
-    // Si no hay PDF, solo enviamos la descripción
-    bot.sendMessage(chatId, respuesta, { disable_web_page_preview: true });
+if (guiaSeleccionada) {
+  let descripcionOriginal = guiaSeleccionada.descripcion;
+
+  // Detecta y extrae los links en formato [texto](url)
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let linksExtraidos = [];
+  let match;
+  while ((match = linkRegex.exec(descripcionOriginal)) !== null) {
+    linksExtraidos.push({
+      original: match[0],
+      texto: match[1],
+      url: match[2],
+      reemplazo: `__LINK${linksExtraidos.length}__` // Placeholder temporal
+    });
+    descripcionOriginal = descripcionOriginal.replace(match[0], `__LINK${linksExtraidos.length - 1}__`);
   }
 
+  // Escapamos el resto del texto
+  let descripcionEscapada = escapeMarkdownV2(descripcionOriginal);
+
+  // Restauramos los links escapados correctamente
+  linksExtraidos.forEach((link, i) => {
+    const textoEscapado = escapeMarkdownV2(link.texto);
+    const urlEscapada = link.url.replace(/\-/g, '\\-').replace(/\./g, '\\.').replace(/\//g, '\\/');
+    const linkFinal = `[${textoEscapado}](${urlEscapada})`;
+    descripcionEscapada = descripcionEscapada.replace(link.reemplazo, linkFinal);
+  });
+
+  const opciones = {
+    parse_mode: "MarkdownV2",
+    disable_web_page_preview: true
+  };
+
+  if (guiaSeleccionada.pdf) {
+    opciones.reply_markup = {
+      inline_keyboard: [
+        [{ text: '🔍 Ver PDF', url: guiaSeleccionada.pdf }]
+      ]
+    };
+  }
+
+  bot.sendMessage(chatId, descripcionEscapada, opciones);
   mostrarOpcionesContinuar(chatId);
   delete userState[chatId];
 } else {
   bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
-}
-  
+}  
     return;
   }
   
