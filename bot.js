@@ -136,60 +136,47 @@ bot.on('message', (msg) => {
       guiaSeleccionada = buscarEnGuias(guias, userMessage);
     }
       
-function escapeMarkdownV2(text) {
-  return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
-}
+    function convertirMarkdownAHTML(texto) {
+      // Escapamos < y > para evitar errores en HTML
+      texto = texto.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-if (guiaSeleccionada) {
-  let descripcionOriginal = guiaSeleccionada.descripcion;
+      // Convertir **negritas** a <b> antes que cursivas para evitar conflictos
+      texto = texto.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
 
-  // 1. Extrae los links y reemplaza temporalmente
-  const linksExtraidos = [];
-  let descripcionSinLinks = descripcionOriginal.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, texto, url) => {
-    const marcador = `__LINK${linksExtraidos.length}__`;
-    linksExtraidos.push({ texto, url, marcador });
-    return marcador;
-  });
+      // Convertir *cursiva* a <i>
+      texto = texto.replace(/\*(.*?)\*/g, '<i>$1</i>');
 
-  // 2. Escapa el texto sin links
-  let descripcionEscapada = escapeMarkdownV2(descripcionSinLinks);
+      // Convertir [texto](url) a <a href="url">texto</a>
+      texto = texto.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
-  // 3. Inserta los links escapados en el texto ya escapado
-  linksExtraidos.forEach(link => {
-    const textoLink = escapeMarkdownV2(link.texto);
-    const urlEscapada = link.url
-      .replace(/\(/g, '\\(')
-      .replace(/\)/g, '\\)')
-      .replace(/\./g, '\\.')
-      .replace(/\-/g, '\\-')
-      .replace(/\_/g, '\\_')
-      .replace(/\//g, '\\/')
-      .replace(/\?/g, '\\?')
-      .replace(/\&/g, '\\&')
-      .replace(/\=/g, '\\=');
-    const markdownLink = `[${textoLink}](${urlEscapada})`;
-    descripcionEscapada = descripcionEscapada.replace(link.marcador, markdownLink);
-  });
+      // Reemplazar saltos de línea por \n (¡NO uses <br>!)
+      texto = texto.replace(/\n/g, '\n');
 
-  const opciones = {
-    parse_mode: "MarkdownV2",
-    disable_web_page_preview: true
-  };
+      return texto;
+    }
 
-  if (guiaSeleccionada.pdf) {
-    opciones.reply_markup = {
-      inline_keyboard: [
-        [{ text: '🔍 Ver PDF', url: guiaSeleccionada.pdf }]
-      ]
-    };
-  }
+    if (guiaSeleccionada) {
+      const descripcionHTML = convertirMarkdownAHTML(guiaSeleccionada.descripcion);
 
-  bot.sendMessage(chatId, descripcionEscapada, opciones);
-  mostrarOpcionesContinuar(chatId);
-  delete userState[chatId];
-} else {
-  bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
-} 
+      const opciones = {
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      };
+
+      if (guiaSeleccionada.pdf) {
+        opciones.reply_markup = {
+          inline_keyboard: [
+            [{ text: '🔍 Ver PDF', url: guiaSeleccionada.pdf }]
+          ]
+        };
+      }
+
+      bot.sendMessage(chatId, descripcionHTML, opciones);
+      mostrarOpcionesContinuar(chatId);
+      delete userState[chatId];
+    } else {
+      bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
+    }
     return;
   }
   
@@ -232,20 +219,40 @@ if (guiaSeleccionada) {
   }
 
   // Si el usuario envía algo que no es categoría ni opción, buscar en todas las guías
-  const guiaEncontrada = buscarEnTodasLasGuias(userMessage);
-  if (guiaEncontrada) {
-    const respuesta = guiaEncontrada;
-    let respuestaMensaje = `${respuesta.descripcion}`;
-    if (respuesta.pdf) {
-      respuestaMensaje += `\n\nConsulta el PDF: ${respuesta.pdf}`;
+    function convertirMarkdownAHTML(texto) {
+      texto = texto.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      texto = texto.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+      texto = texto.replace(/\*(.*?)\*/g, '<i>$1</i>');
+      texto = texto.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+      // No uses <br>, solo \n para saltos de línea
+      return texto;
     }
-    bot.sendMessage(chatId, respuestaMensaje, { parse_mode: 'Markdown' });
 
-    // Mostrar las opciones de continuar o finalizar
-    mostrarOpcionesContinuar(chatId);
-  } else {
-    bot.sendMessage(chatId, 'No encontré información relacionada. Intenta con otra pregunta o selección.');
-  }
+    const guiaEncontrada = buscarEnTodasLasGuias(userMessage);
+
+    if (guiaEncontrada) {
+      const descripcionHTML = convertirMarkdownAHTML(guiaEncontrada.descripcion);
+
+      const opciones = {
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      };
+
+      if (guiaEncontrada.pdf) {
+        opciones.reply_markup = {
+          inline_keyboard: [
+            [{ text: '🔍 Ver PDF', url: guiaEncontrada.pdf }]
+          ]
+        };
+      }
+
+      bot.sendMessage(chatId, descripcionHTML, opciones);
+      mostrarOpcionesContinuar(chatId);
+      delete userState[chatId];
+    } else {
+      bot.sendMessage(chatId, 'No encontré información relacionada. Intenta con otra pregunta o selección.');
+    }
+
 });
 
 // Función para mostrar el mensaje de bienvenida
