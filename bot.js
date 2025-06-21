@@ -31,7 +31,7 @@ const categorias = {
     guias: guiasCancelacion
   },
   'Guia de reconciliacion': {
-    descripcion: 'Opciones relacionadas con cambios fisicos.',
+    descripcion: 'Opciones relacionadas.',
     guias: guiasReconciliacion
   }
 };
