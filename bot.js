@@ -136,36 +136,39 @@ bot.on('message', (msg) => {
       guiaSeleccionada = buscarEnGuias(guias, userMessage);
     }
       
-    function escapeMarkdownV2(text) {
-  return text.replace(/([\_\*\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!])/g, '\\$1');
+function escapeMarkdownV2(text) {
+  return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
 if (guiaSeleccionada) {
   let descripcionOriginal = guiaSeleccionada.descripcion;
 
-  // Detecta y extrae los links en formato [texto](url)
-  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-  let linksExtraidos = [];
-  let match;
-  while ((match = linkRegex.exec(descripcionOriginal)) !== null) {
-    linksExtraidos.push({
-      original: match[0],
-      texto: match[1],
-      url: match[2],
-      reemplazo: `__LINK${linksExtraidos.length}__` // Placeholder temporal
-    });
-    descripcionOriginal = descripcionOriginal.replace(match[0], `__LINK${linksExtraidos.length - 1}__`);
-  }
+  // 1. Extrae los links y reemplaza temporalmente
+  const linksExtraidos = [];
+  let descripcionSinLinks = descripcionOriginal.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, texto, url) => {
+    const marcador = `__LINK${linksExtraidos.length}__`;
+    linksExtraidos.push({ texto, url, marcador });
+    return marcador;
+  });
 
-  // Escapamos el resto del texto
-  let descripcionEscapada = escapeMarkdownV2(descripcionOriginal);
+  // 2. Escapa el texto sin links
+  let descripcionEscapada = escapeMarkdownV2(descripcionSinLinks);
 
-  // Restauramos los links escapados correctamente
-  linksExtraidos.forEach((link, i) => {
-    const textoEscapado = escapeMarkdownV2(link.texto);
-    const urlEscapada = link.url.replace(/\-/g, '\\-').replace(/\./g, '\\.').replace(/\//g, '\\/');
-    const linkFinal = `[${textoEscapado}](${urlEscapada})`;
-    descripcionEscapada = descripcionEscapada.replace(link.reemplazo, linkFinal);
+  // 3. Inserta los links escapados en el texto ya escapado
+  linksExtraidos.forEach(link => {
+    const textoLink = escapeMarkdownV2(link.texto);
+    const urlEscapada = link.url
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/\./g, '\\.')
+      .replace(/\-/g, '\\-')
+      .replace(/\_/g, '\\_')
+      .replace(/\//g, '\\/')
+      .replace(/\?/g, '\\?')
+      .replace(/\&/g, '\\&')
+      .replace(/\=/g, '\\=');
+    const markdownLink = `[${textoLink}](${urlEscapada})`;
+    descripcionEscapada = descripcionEscapada.replace(link.marcador, markdownLink);
   });
 
   const opciones = {
@@ -186,7 +189,7 @@ if (guiaSeleccionada) {
   delete userState[chatId];
 } else {
   bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
-}  
+} 
     return;
   }
   
