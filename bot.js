@@ -186,16 +186,21 @@ bot.on('message', async (msg) => {
         disable_web_page_preview: true
       };
 
-      if (guiaSeleccionada.pdf) {
-        opciones.reply_markup = {
-          inline_keyboard: [
-            [{ text: 'Click para más info. 🔍', url: guiaSeleccionada.pdf }]
-          ]
-        };
-      }
+    await bot.sendMessage(chatId, descripcionHTML, opciones);
 
-      bot.sendMessage(chatId, descripcionHTML, opciones);
-      await mostrarOpcionesContinuar(chatId, guiaSeleccionada);
+    if (guiaSeleccionada.pdf) {
+      const pdfOpciones = {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔍 Click para más info.', url: guiaSeleccionada.pdf }]
+          ]
+        }
+      };
+      await bot.sendMessage(chatId, 'Consulta el documento relacionado:', pdfOpciones);
+    }
+
+    await mostrarOpcionesContinuar(chatId);
+
       delete userState[chatId];
     } else {
       bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
@@ -261,16 +266,21 @@ bot.on('message', async (msg) => {
         disable_web_page_preview: true
       };
 
+      await bot.sendMessage(chatId, descripcionHTML, opciones);
+
       if (guiaEncontrada.pdf) {
-        opciones.reply_markup = {
-          inline_keyboard: [
-            [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
-          ]
+        const pdfOpciones = {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
+            ]
+          }
         };
+        await bot.sendMessage(chatId, 'Consulta el documento relacionado:', pdfOpciones);
       }
 
-      bot.sendMessage(chatId, descripcionHTML, opciones);
-      mostrarOpcionesContinuar(chatId);
+      await mostrarOpcionesContinuar(chatId);
+
       delete userState[chatId];
     } else {
       bot.sendMessage(chatId, 'No encontré información relacionada. Intenta con otra pregunta o selección.');
