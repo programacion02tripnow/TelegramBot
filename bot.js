@@ -67,7 +67,7 @@ bot.on('callback_query', (callbackQuery) => {
 });
 
 // Manejar mensajes del usuario
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userMessage = msg.text ? msg.text.toLowerCase() : '';
 
@@ -104,10 +104,52 @@ bot.on('message', (msg) => {
   // Obtener estado del usuario
   const estado = userState[chatId];
 
-  function escapeMarkdownV2(text) {
-    return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, match => '\\' + match);
-  }
+      function convertirMarkdownAHTML(texto) {
+      // Escapamos < y > para evitar errores en HTML
+      texto = texto.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+      // Convertir **negritas** a <b> antes que cursivas para evitar conflictos
+      texto = texto.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+
+      // Convertir *cursiva* a <i>
+      texto = texto.replace(/\*(.*?)\*/g, '<i>$1</i>');
+
+      // Convertir [texto](url) a <a href="url">texto</a>
+      texto = texto.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+      // Reemplazar saltos de línea por \n (¡NO uses <br>!)
+      texto = texto.replace(/\n/g, '\n');
+
+      return texto;
+    }
+
+    async function manejarGuia(chatId, guiaSeleccionada) {
+    const descripcionHTML = convertirMarkdownAHTML(guiaSeleccionada.descripcion);
+
+    // 1. Enviar la descripción
+    await bot.sendMessage(chatId, descripcionHTML, {
+      parse_mode: "HTML",
+      disable_web_page_preview: true
+    });
+
+    // 2. Enviar el botón del PDF si existe
+    if (guiaSeleccionada.pdf) {
+      const pdfOpciones = {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔍 Click para más info.', url: guiaSeleccionada.pdf }]
+          ]
+        }
+      };
+      await bot.sendMessage(chatId, 'Consulta el documento relacionado:', pdfOpciones);
+    }
+
+    // 3. Mostrar opciones de continuar
+    await mostrarOpcionesContinuar(chatId);
+
+    // 4. Limpiar estado
+    delete userState[chatId];
+  }
 
   // Si el usuario está en un estado de selección de categoría
   if (estado && estado.seleccion && categorias[estado.seleccion]) {
@@ -135,25 +177,6 @@ bot.on('message', (msg) => {
     if (!guiaSeleccionada) {
       guiaSeleccionada = buscarEnGuias(guias, userMessage);
     }
-      
-    function convertirMarkdownAHTML(texto) {
-      // Escapamos < y > para evitar errores en HTML
-      texto = texto.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-      // Convertir **negritas** a <b> antes que cursivas para evitar conflictos
-      texto = texto.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-
-      // Convertir *cursiva* a <i>
-      texto = texto.replace(/\*(.*?)\*/g, '<i>$1</i>');
-
-      // Convertir [texto](url) a <a href="url">texto</a>
-      texto = texto.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-
-      // Reemplazar saltos de línea por \n (¡NO uses <br>!)
-      texto = texto.replace(/\n/g, '\n');
-
-      return texto;
-    }
 
     if (guiaSeleccionada) {
       const descripcionHTML = convertirMarkdownAHTML(guiaSeleccionada.descripcion);
@@ -166,13 +189,13 @@ bot.on('message', (msg) => {
       if (guiaSeleccionada.pdf) {
         opciones.reply_markup = {
           inline_keyboard: [
-            [{ text: '🔍 Ver PDF', url: guiaSeleccionada.pdf }]
+            [{ text: 'Click para más info. 🔍', url: guiaSeleccionada.pdf }]
           ]
         };
       }
 
       bot.sendMessage(chatId, descripcionHTML, opciones);
-      mostrarOpcionesContinuar(chatId);
+      await mostrarOpcionesContinuar(chatId, guiaSeleccionada);
       delete userState[chatId];
     } else {
       bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
@@ -241,7 +264,7 @@ bot.on('message', (msg) => {
       if (guiaEncontrada.pdf) {
         opciones.reply_markup = {
           inline_keyboard: [
-            [{ text: '🔍 Ver PDF', url: guiaEncontrada.pdf }]
+            [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
           ]
         };
       }
@@ -301,7 +324,7 @@ function buscarEnGuias(guias, mensaje) {
 }
 
 // Función para mostrar opciones de continuar o finalizar
-function mostrarOpcionesContinuar(chatId) {
+async function mostrarOpcionesContinuar(chatId) {
   const options = {
     reply_markup: {
       inline_keyboard: [
@@ -325,7 +348,7 @@ function mostrarOpcionesContinuar(chatId) {
     }
   };
 
-  bot.sendMessage(chatId, '¿Deseas realizar otra búsqueda o finalizar?', options);
+  return await bot.sendMessage(chatId, '¿Deseas realizar otra búsqueda o finalizar?', options);
 }
 
 // Manejar el callback de buscar otra guía o finalizar
