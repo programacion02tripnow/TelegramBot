@@ -123,34 +123,6 @@ bot.on('message', async (msg) => {
       return texto;
     }
 
-    async function manejarGuia(chatId, guiaSeleccionada) {
-    const descripcionHTML = convertirMarkdownAHTML(guiaSeleccionada.descripcion);
-
-    // 1. Enviar la descripción
-    await bot.sendMessage(chatId, descripcionHTML, {
-      parse_mode: "HTML",
-      disable_web_page_preview: true
-    });
-
-    // 2. Enviar el botón del PDF si existe
-    if (guiaSeleccionada.pdf) {
-      const pdfOpciones = {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '🔍 Click para más info.', url: guiaSeleccionada.pdf }]
-          ]
-        }
-      };
-      await bot.sendMessage(chatId, 'Consulta el documento relacionado:', pdfOpciones);
-    }
-
-    // 3. Mostrar opciones de continuar
-    await mostrarOpcionesContinuar(chatId);
-
-    // 4. Limpiar estado
-    delete userState[chatId];
-  }
-
   // Si el usuario está en un estado de selección de categoría
   if (estado && estado.seleccion && categorias[estado.seleccion]) {
     const categoriaSeleccionada = estado.seleccion;
@@ -179,24 +151,22 @@ bot.on('message', async (msg) => {
     }
 
     if (guiaSeleccionada) {
-      const descripcionHTML = convertirMarkdownAHTML(guiaSeleccionada.descripcion);
+      const descripcionHTML = convertirMarkdownAHTML(guiaEncontrada.descripcion);
 
+      const opciones = {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: guiaEncontrada.pdf
+          ? {
+              inline_keyboard: [
+                [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
+              ]
+            }
+          : undefined
+      };
 
-const opciones = {
-  parse_mode: "HTML",
-  disable_web_page_preview: true,
-  reply_markup: guiaEncontrada.pdf
-    ? {
-        inline_keyboard: [
-          [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
-        ]
-      }
-    : undefined
-};
-
-await bot.sendMessage(chatId, descripcionHTML, opciones);
-await mostrarOpcionesContinuar(chatId);
-
+      await bot.sendMessage(chatId, descripcionHTML, opciones);
+      await mostrarOpcionesContinuar(chatId);
       delete userState[chatId];
     } else {
       bot.sendMessage(chatId, 'Opción no válida ⚠️. Por favor, ingresa el número o el nombre correcto de la opción 🙄.');
@@ -255,22 +225,27 @@ await mostrarOpcionesContinuar(chatId);
     const guiaEncontrada = buscarEnTodasLasGuias(userMessage);
 
     if (guiaEncontrada) {
-    const descripcionHTML = convertirMarkdownAHTML(guiaEncontrada.descripcion);
+      const descripcionHTML = convertirMarkdownAHTML(guiaEncontrada.descripcion);
 
-    const opciones = {
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      reply_markup: guiaEncontrada.pdf
-        ? {
+      const opciones = {
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      };
+
+      await bot.sendMessage(chatId, descripcionHTML, opciones);
+
+      if (guiaEncontrada.pdf) {
+        const pdfOpciones = {
+          reply_markup: {
             inline_keyboard: [
               [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
             ]
           }
-        : undefined
-    };
+        };
+        await bot.sendMessage(chatId, 'Consulta el documento relacionado:', pdfOpciones);
+      }
 
-    await bot.sendMessage(chatId, descripcionHTML, opciones);
-    await mostrarOpcionesContinuar(chatId);
+      await mostrarOpcionesContinuar(chatId);
 
       delete userState[chatId];
     } else {
