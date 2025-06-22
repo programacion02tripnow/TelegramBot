@@ -181,25 +181,21 @@ bot.on('message', async (msg) => {
     if (guiaSeleccionada) {
       const descripcionHTML = convertirMarkdownAHTML(guiaSeleccionada.descripcion);
 
-      const opciones = {
-        parse_mode: "HTML",
-        disable_web_page_preview: true
-      };
 
-    await bot.sendMessage(chatId, descripcionHTML, opciones);
+const opciones = {
+  parse_mode: "HTML",
+  disable_web_page_preview: true,
+  reply_markup: guiaEncontrada.pdf
+    ? {
+        inline_keyboard: [
+          [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
+        ]
+      }
+    : undefined
+};
 
-    if (guiaSeleccionada.pdf) {
-      const pdfOpciones = {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '🔍 Click para más info.', url: guiaSeleccionada.pdf }]
-          ]
-        }
-      };
-      await bot.sendMessage(chatId, 'Consulta el documento relacionado:', pdfOpciones);
-    }
-
-    await mostrarOpcionesContinuar(chatId);
+await bot.sendMessage(chatId, descripcionHTML, opciones);
+await mostrarOpcionesContinuar(chatId);
 
       delete userState[chatId];
     } else {
@@ -259,27 +255,22 @@ bot.on('message', async (msg) => {
     const guiaEncontrada = buscarEnTodasLasGuias(userMessage);
 
     if (guiaEncontrada) {
-      const descripcionHTML = convertirMarkdownAHTML(guiaEncontrada.descripcion);
+    const descripcionHTML = convertirMarkdownAHTML(guiaEncontrada.descripcion);
 
-      const opciones = {
-        parse_mode: "HTML",
-        disable_web_page_preview: true
-      };
-
-      await bot.sendMessage(chatId, descripcionHTML, opciones);
-
-      if (guiaEncontrada.pdf) {
-        const pdfOpciones = {
-          reply_markup: {
+    const opciones = {
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: guiaEncontrada.pdf
+        ? {
             inline_keyboard: [
               [{ text: '🔍 Click para más info.', url: guiaEncontrada.pdf }]
             ]
           }
-        };
-        await bot.sendMessage(chatId, 'Consulta el documento relacionado:', pdfOpciones);
-      }
+        : undefined
+    };
 
-      await mostrarOpcionesContinuar(chatId);
+    await bot.sendMessage(chatId, descripcionHTML, opciones);
+    await mostrarOpcionesContinuar(chatId);
 
       delete userState[chatId];
     } else {
